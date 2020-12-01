@@ -39,6 +39,7 @@ uint8_t global_language = LANGUAGE_EN;
 String global_wifi_ssid;
 String global_wifi_password;
 String global_mac;
+String global_image_url;
 uint8_t global_wifi_configed = false;
 uint8_t global_time_synced = false;
 uint8_t global_ttf_file_loaded = false;
@@ -119,13 +120,21 @@ uint32_t LoadBootCount(void)
     return global_boot_count;
 }
 
+String getImageUrl()
+{
+    return global_image_url;
+}
+
+void setImageUrl(String url)
+{
+    global_image_url = url;
+}
 
 esp_err_t LoadSetting(void)
 {
     nvs_handle nvs_arg;
     NVS_CHECK(nvs_open("system", NVS_READONLY, &nvs_arg));
     NVS_CHECK(nvs_get_u8(nvs_arg, "Language", &global_language));
-    NVS_CHECK(nvs_get_u8(nvs_arg, "Timesync", &global_time_synced));
 
     size_t length = 128;
     char buf[128];
@@ -137,8 +146,9 @@ esp_err_t LoadSetting(void)
     // log_d("ssid = %s, pswd = %s", global_wifi_ssid.c_str(), global_wifi_password.c_str());
     global_wifi_configed = true;
 
-    nvs_get_i8(nvs_arg, "timezone", &global_timezone);
-    log_d("Success");
+    length = 128;
+    nvs_get_str(nvs_arg, "url", buf, &length);
+    global_image_url = String(buf);
 
     nvs_close(nvs_arg);
     return ESP_OK;
@@ -150,10 +160,9 @@ esp_err_t SaveSetting(void)
     nvs_handle nvs_arg;
     NVS_CHECK(nvs_open("system", NVS_READWRITE, &nvs_arg));
     NVS_CHECK(nvs_set_u8(nvs_arg, "Language", global_language));
-    NVS_CHECK(nvs_set_u8(nvs_arg, "Timesync", global_time_synced));
-    NVS_CHECK(nvs_set_i8(nvs_arg, "timezone", global_timezone));
     NVS_CHECK(nvs_set_str(nvs_arg, "ssid", global_wifi_ssid.c_str()));
     NVS_CHECK(nvs_set_str(nvs_arg, "pswd", global_wifi_password.c_str()));
+    NVS_CHECK(nvs_set_str(nvs_arg, "url", global_image_url.c_str()));
     // log_d("ssid = %s, pswd = %s", global_wifi_ssid.c_str(), global_wifi_password.c_str());
     NVS_CHECK(nvs_commit(nvs_arg));
     log_d("Success");

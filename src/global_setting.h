@@ -48,5 +48,7 @@ void UserMessage(int level, uint32_t timeout, String title, String msg = "", Str
 uint32_t LoadBootCount(void);
 
 String getMACString(void);
+String getImageUrl();
+void setImageUrl(String url);
 
 #endif //_GLOBAL_SETTING_H_

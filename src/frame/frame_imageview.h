@@ -7,13 +7,19 @@
 class Frame_ImageView : public Frame_Base
 {
 public:
-    Frame_ImageView(String name);
+    Frame_ImageView();
+    Frame_ImageView(String url);
     ~Frame_ImageView();
     int init(epdgui_args_vector_t &args);
+    int run();
 
 private:
+    uint8_t* download(String url, uint32_t *psize);
+    void save(uint8_t* jpg, uint32_t size);
     M5EPD_Canvas* _canvas;
-    String _name;
+    M5EPD_Canvas* _canvas_download;
+    String _url;
+    bool _is_first;
 };
 
 #endif //_FRAME_IMAGEVIEW_H_

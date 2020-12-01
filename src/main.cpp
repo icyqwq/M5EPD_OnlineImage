@@ -3,6 +3,15 @@
 #include "epdgui/epdgui.h"
 #include "frame/frame.h"
 #include "resources/binaryttf.h"
+#include "FS.h"
+#include "SPIFFS.h"
+
+// Usage:
+// Upload your image to https://sm.ms/ (global) or https://imgchr.com/ (china) 
+// and copy Image URL like
+// https://s3.ax1x.com/2020/12/01/DWORL6.jpg
+// https://i.loli.net/2020/12/01/rTFVGimzWAjChY3.jpg
+// then send the url to device through serial port
 
 static const char kPrenderGlyph[77] = {
     'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', //10
@@ -42,6 +51,97 @@ esp_err_t connectWiFi()
     }
 }
 
+void listDir(fs::FS &fs, const char * dirname, uint8_t levels){
+    Serial.printf("Listing directory: %s\r\n", dirname);
+
+    File root = fs.open(dirname);
+    if(!root){
+        Serial.println("- failed to open directory");
+        return;
+    }
+    if(!root.isDirectory()){
+        Serial.println(" - not a directory");
+        return;
+    }
+
+    File file = root.openNextFile();
+    while(file){
+        if(file.isDirectory()){
+            Serial.print("  DIR : ");
+            Serial.println(file.name());
+            if(levels){
+                listDir(fs, file.name(), levels -1);
+            }
+        } else {
+            Serial.print("  FILE: ");
+            Serial.print(file.name());
+            Serial.print("\tSIZE: ");
+            Serial.println(file.size());
+        }
+        file = root.openNextFile();
+    }
+}
+
+
+void testFileIO(fs::FS &fs, const char * path){
+    Serial.printf("Testing file I/O with %s\r\n", path);
+
+    static uint8_t buf[512];
+    size_t len = 0;
+    File file = fs.open(path, FILE_WRITE);
+    if(!file){
+        Serial.println("- failed to open file for writing");
+        return;
+    }
+
+    size_t i;
+    Serial.print("- writing" );
+    uint32_t start = millis();
+    for(i=0; i<512; i++){
+        if ((i & 0x001F) == 0x001F){
+          Serial.print(".");
+        }
+        uint32_t written = file.write(buf, 512);
+        if(written != 512)
+        {
+            log_d("err");
+        }
+    }
+    Serial.println("");
+    uint32_t end = millis() - start;
+    Serial.printf(" - %u bytes written in %u ms\r\n", 512 * 512, end);
+    file.close();
+
+    file = fs.open(path);
+    start = millis();
+    end = start;
+    i = 0;
+    if(file && !file.isDirectory()){
+        len = file.size();
+        size_t flen = len;
+        start = millis();
+        Serial.print("- reading" );
+        while(len){
+            size_t toRead = len;
+            if(toRead > 512){
+                toRead = 512;
+            }
+            file.read(buf, toRead);
+            if ((i++ & 0x001F) == 0x001F){
+              Serial.print(".");
+            }
+            len -= toRead;
+        }
+        Serial.println("");
+        end = millis() - start;
+        Serial.printf("- %u bytes read in %u ms\r\n", flen, end);
+        file.close();
+    } else {
+        Serial.println("- failed to open file for reading");
+    }
+}
+
+
 void setup()
 {
     M5.begin();
@@ -49,6 +149,19 @@ void setup()
     M5.EPD.SetRotation(90);
     M5.TP.SetRotation(90);
     esp_err_t load_err = LoadSetting();
+
+    if(!SPIFFS.begin(1))
+    {
+        log_e("SPIFFS Mount Failed");
+        while(1);
+    }
+    else
+    {
+        log_d("size of SPIFFS = %d bytes", SPIFFS.totalBytes());
+        listDir(SPIFFS, "/", 0);
+        // testFileIO(SPIFFS, "/test.jpg");
+    }
+    
 
     M5EPD_Canvas canvas(&M5.EPD);
     if(SD.exists("/font.ttf"))
@@ -87,12 +200,10 @@ void setup()
     }
     else
     {
-        Frame_Base *frame = new Frame_ImageList();
-        EPDGUI_AddFrame("Frame_ImageList", frame);
+        Frame_Base *frame = new Frame_ImageView();
+        EPDGUI_AddFrame("Frame_ImageView", frame);
         EPDGUI_PushFrame(frame);
     }
-    
-
     LoadingAnime_32x32_Stop();
 }
 

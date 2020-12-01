@@ -1,6 +1,6 @@
 #include "frame_wifiscan.h"
 #include "frame_wifipassword.h"
-#include "frame_imagelist.h"
+#include "frame_imageview.h"
 #include <WiFi.h>
 
 #define MAX_BTN_NUM     14
@@ -315,8 +315,8 @@ void Frame_WifiScan::Connect()
     // SyncNTPTime();
     _is_run = 0;
     EPDGUI_PopFrame();
-    Frame_Base *frame = new Frame_ImageList();
-    EPDGUI_AddFrame("Frame_ImageList", frame);
+    Frame_Base *frame = new Frame_ImageView();
+    EPDGUI_AddFrame("Frame_ImageView", frame);
     EPDGUI_PushFrame(frame);
 }
 
