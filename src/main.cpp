@@ -99,7 +99,6 @@ void setup()
     {
         log_d("size of SPIFFS = %d bytes", SPIFFS.totalBytes());
         // listDir(SPIFFS, "/", 0);
-        // testFileIO(SPIFFS, "/test.jpg");
     }
     
 
