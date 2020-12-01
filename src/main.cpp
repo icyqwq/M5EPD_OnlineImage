@@ -82,66 +82,6 @@ void listDir(fs::FS &fs, const char * dirname, uint8_t levels){
     }
 }
 
-
-void testFileIO(fs::FS &fs, const char * path){
-    Serial.printf("Testing file I/O with %s\r\n", path);
-
-    static uint8_t buf[512];
-    size_t len = 0;
-    File file = fs.open(path, FILE_WRITE);
-    if(!file){
-        Serial.println("- failed to open file for writing");
-        return;
-    }
-
-    size_t i;
-    Serial.print("- writing" );
-    uint32_t start = millis();
-    for(i=0; i<512; i++){
-        if ((i & 0x001F) == 0x001F){
-          Serial.print(".");
-        }
-        uint32_t written = file.write(buf, 512);
-        if(written != 512)
-        {
-            log_d("err");
-        }
-    }
-    Serial.println("");
-    uint32_t end = millis() - start;
-    Serial.printf(" - %u bytes written in %u ms\r\n", 512 * 512, end);
-    file.close();
-
-    file = fs.open(path);
-    start = millis();
-    end = start;
-    i = 0;
-    if(file && !file.isDirectory()){
-        len = file.size();
-        size_t flen = len;
-        start = millis();
-        Serial.print("- reading" );
-        while(len){
-            size_t toRead = len;
-            if(toRead > 512){
-                toRead = 512;
-            }
-            file.read(buf, toRead);
-            if ((i++ & 0x001F) == 0x001F){
-              Serial.print(".");
-            }
-            len -= toRead;
-        }
-        Serial.println("");
-        end = millis() - start;
-        Serial.printf("- %u bytes read in %u ms\r\n", flen, end);
-        file.close();
-    } else {
-        Serial.println("- failed to open file for reading");
-    }
-}
-
-
 void setup()
 {
     M5.begin();
@@ -158,7 +98,7 @@ void setup()
     else
     {
         log_d("size of SPIFFS = %d bytes", SPIFFS.totalBytes());
-        listDir(SPIFFS, "/", 0);
+        // listDir(SPIFFS, "/", 0);
         // testFileIO(SPIFFS, "/test.jpg");
     }
     
