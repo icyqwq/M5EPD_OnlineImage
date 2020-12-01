@@ -1,24 +1,37 @@
 #include <M5EPD.h>
 #include <WiFi.h>
+#include "epdgui/epdgui.h"
+#include "frame/frame.h"
+#include "resources/binaryttf.h"
 
-// Example of displaying online images
-// Drawing png will consume a lot of time
-// Drawing jpg needs to consume the corresponding heap space to download the image
+static const char kPrenderGlyph[77] = {
+    'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', //10
+       'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l',   //9
+            'z', 'x', 'c', 'v', 'b', 'n', 'm',   //7
+    'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', //10
+       'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L',   //9
+            'Z', 'X', 'C', 'V', 'B', 'N', 'M',   //7
+    '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', //10
+       '-', '/', ':', ';', '(', ')', '$', '&', '@',   //9
+            '_', '\'', '.', ',', '?', '!',   //7
+};
 
-M5EPD_Canvas canvas(&M5.EPD);
-
-esp_err_t connectWiFi(String ssid, String pswd)
+esp_err_t connectWiFi()
 {
+    if((GetWifiSSID().length() < 2) || (GetWifiPassword().length() < 8))
+    {
+        log_d("no valid wifi config");
+        return ESP_FAIL;
+    }
     WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid.c_str(), pswd.c_str());
-    log_d("Connect to %s", ssid.c_str());
+    WiFi.begin(GetWifiSSID().c_str(), GetWifiPassword().c_str());
+    log_d("Connect to %s", GetWifiSSID().c_str());
     uint32_t t = millis();
     while (1)
     {
         if(millis() - t > 8000)
         {
             WiFi.disconnect();
-            log_e("Connect timeout.");
             return ESP_FAIL;
         }
 
@@ -29,36 +42,61 @@ esp_err_t connectWiFi(String ssid, String pswd)
     }
 }
 
-void malloc_test(size_t size)
-{
-    uint8_t* p = NULL;
-    p = (uint8_t*)ps_malloc(size);
-    if(p != NULL)
-    {
-        free(p);
-        log_d("malloc %d SUCCESS", size);
-    }
-    else
-    {
-        log_d("malloc %d FAILED", size);
-    }
-}
-
 void setup()
 {
     M5.begin();
     M5.EPD.Clear(true);
     M5.EPD.SetRotation(90);
     M5.TP.SetRotation(90);
+    esp_err_t load_err = LoadSetting();
 
-    connectWiFi("M5-5G", "Office@888888");
+    M5EPD_Canvas canvas(&M5.EPD);
+    if(SD.exists("/font.ttf"))
+    {
+        canvas.loadFont("/font.ttf", SD);
+        SetTTFLoaded(true);
+    }
+    else
+    {
+        canvas.loadFont(binaryttf, sizeof(binaryttf));
+        SetTTFLoaded(false);
+    }
+    SetLanguage(LANGUAGE_EN);
+    canvas.createRender(26, 128);
 
-    canvas.createCanvas(540, 960);
-    canvas.drawJpgUrl("https://cdn.shopifycdn.net/s/files/1/0056/7689/2250/files/LOGO_60x@2x.jpg?v=1563273356");
-    canvas.pushCanvas(0, 0, UPDATE_MODE_GC16);
+    LoadingAnime_32x32_Start(254, 424);
+    esp_err_t wifi_err = ESP_FAIL;
+    if(load_err == ESP_OK)
+    {
+        wifi_err = connectWiFi();
+    }
+
+    if(wifi_err == ESP_FAIL)
+    {
+        Frame_Base *frame = new Frame_WifiPassword();
+        EPDGUI_AddFrame("Frame_WifiPassword", frame);
+        log_d("pre rending...");
+        canvas.setTextSize(26);
+        for(int i = 0; i < 77; i++)
+        {
+            canvas.preRender(kPrenderGlyph[i]);
+        }
+        frame = new Frame_WifiScan();
+        EPDGUI_AddFrame("Frame_WifiScan",  frame);
+        EPDGUI_PushFrame(frame);
+    }
+    else
+    {
+        Frame_Base *frame = new Frame_ImageList();
+        EPDGUI_AddFrame("Frame_ImageList", frame);
+        EPDGUI_PushFrame(frame);
+    }
+    
+
+    LoadingAnime_32x32_Stop();
 }
 
 void loop()
 {
-    // put your main code here, to run repeatedly:
+    EPDGUI_MainLoop();
 }
